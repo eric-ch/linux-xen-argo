@@ -1,0 +1,4 @@
+obj-m += vsock_argo_transport.o
+vsock_argo_transport-y += argo_transport.o argo_ring.o
+
+ccflags-y := -I$(src)/include
