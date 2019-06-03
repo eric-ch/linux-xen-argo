@@ -199,6 +199,14 @@ do_spin_unlock(argo_spinlock_t * l, int line)
 #define argo_spin_unlock_irqrestore(a,b)  do_spin_unlock_irqrestore(a,b,__LINE__)
 #endif /* ! ARGO_DEBUG_LOCKS */
 
+#if (LINUX_VERSION_CODE > KERNEL_VERSION(5,0,0))
+#define _access_ok(type, addr, size)	\
+    access_ok(addr, size)
+#else
+#define _access_ok(type, addr, size	\
+    access_ok(type, addr, size)
+#endif
+
 
 /*The type of a ring*/
 typedef enum
@@ -1997,7 +2005,7 @@ argo_try_send_sponsor(struct argo_private *p, xen_argo_addr_t *dest,
     xen_argo_iov_t iov;
     xen_argo_addr_t addr;
 
-    iov.iov_hnd = buf;
+    iov.iov_hnd = (void*)buf;
 #ifdef CONFIG_ARM
     iov.pad2 = 0;
 #endif
@@ -2160,7 +2168,7 @@ argo_sendto_from_sponsor(struct argo_private *p,
             xen_argo_iov_t iov;
             xen_argo_addr_t addr;
 
-            iov.iov_hnd = buf;
+            iov.iov_hnd = (void*)buf;
 #ifdef CONFIG_ARM
             iov.pad2 = 0;
 #endif
@@ -2593,7 +2601,7 @@ argo_recv_stream(struct argo_private *p, void *_buf, int len, int recv_flags,
             DEBUG_APPLE;
             argo_spin_unlock_irqrestore(&p->pending_recv_lock, flags);
 
-            if ( !access_ok(VERIFY_WRITE, buf, to_copy) )
+            if ( !_access_ok(VERIFY_WRITE, buf, to_copy) )
             {
                 printk(KERN_ERR "ARGO - ERROR: buf invalid _buf=%p buf=%p len=%d to_copy=%zu count=%zu\n",
                        _buf, buf, len, to_copy, count);
@@ -3031,8 +3039,18 @@ static const struct dentry_operations argofs_dentry_operations = {
     .d_dname = argofs_dname,
 };
 
+static inline int
+_get_unused_fd(unsigned flags) {
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(3,7,0))
+    return get_unused_fd();
+#else
+    return get_unused_fd_flags(flags);
+#endif
+}
+
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(4,19,0))
 static int
-allocate_fd_with_private (void *private)
+__allocate_fd_with_private_419 (void *private)
 {
     int fd;
     struct file *f;
@@ -3040,11 +3058,7 @@ allocate_fd_with_private (void *private)
     struct path path;
     struct inode *ind;
 
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(3,7,0))
-    fd = get_unused_fd();
-#else
-    fd = get_unused_fd_flags(O_CLOEXEC);
-#endif
+    fd = _get_unused_fd(O_CLOEXEC);
     if ( fd < 0 )
         return fd;
 
@@ -3079,6 +3093,52 @@ allocate_fd_with_private (void *private)
     fd_install (fd, f);
 
     return fd;
+}
+#endif
+
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4,19,0))
+static int
+__allocate_fd_with_private (void *private)
+{
+    int fd;
+    struct file *f;
+    struct inode *ind;
+
+    fd = _get_unused_fd(O_CLOEXEC);
+    if ( fd < 0 )
+        return fd;
+
+    ind = new_inode(argo_mnt->mnt_sb);
+    ind->i_ino = get_next_ino();
+    ind->i_fop = argo_mnt->mnt_root->d_inode->i_fop;
+    ind->i_state = argo_mnt->mnt_root->d_inode->i_state;
+    ind->i_mode = argo_mnt->mnt_root->d_inode->i_mode;
+    ind->i_uid = current_fsuid();
+    ind->i_gid = current_fsgid();
+
+    DEBUG_APPLE;
+    f = alloc_file_pseudo(ind, argo_mnt, "", O_RDWR, &argo_fops_stream);
+    if ( !f )
+    {
+      //FIXME putback fd?
+        return -ENFILE;
+    }
+
+    f->private_data = private;
+    fd_install (fd, f);
+
+    return fd;
+}
+#endif
+
+static inline int
+allocate_fd_with_private (void *private)
+{
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(4,19,0))
+    return __allocate_fd_with_private_419 (private);
+#else
+    return __allocate_fd_with_private (private);
+#endif
 }
 
 static int
@@ -3276,7 +3336,7 @@ argo_sendto(struct argo_private * p, const void *buf, size_t len, int flags,
 {
     ssize_t rc;
 
-    if ( !access_ok(VERIFY_READ, buf, len) )
+    if ( !_access_ok(VERIFY_READ, buf, len) )
         return -EFAULT;
 
 #ifdef ARGO_DEBUG
@@ -3368,7 +3428,7 @@ argo_recvfrom(struct argo_private * p, void *buf, size_t len, int flags,
            buf, len, nonblock);
 #endif
  
-    if ( !access_ok (VERIFY_WRITE, buf, len) )
+    if ( !_access_ok (VERIFY_WRITE, buf, len) )
         return -EFAULT;
 
     if ( flags & MSG_DONTWAIT )
@@ -3672,7 +3732,7 @@ argo_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
             }
             break;
         case ARGOIOCGETSOCKNAME:
-            if ( !access_ok (VERIFY_WRITE, arg, sizeof(struct argo_ring_id)) )
+            if ( !_access_ok (VERIFY_WRITE, arg, sizeof(struct argo_ring_id)) )
                 return -EFAULT;
             {
                 struct argo_ring_id ring_id;
@@ -3685,7 +3745,7 @@ argo_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
             break;
         case ARGOIOCGETSOCKTYPE:
             DEBUG_APPLE;
-            if ( !access_ok (VERIFY_WRITE, arg, sizeof(int)) )
+            if ( !_access_ok (VERIFY_WRITE, arg, sizeof(int)) )
                 return -EFAULT;
             {
                 int sock_type;
@@ -3697,7 +3757,7 @@ argo_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
             break;
         case ARGOIOCGETPEERNAME:
             DEBUG_APPLE;
-            if ( !access_ok (VERIFY_WRITE, arg, sizeof(xen_argo_addr_t)) )
+            if ( !_access_ok (VERIFY_WRITE, arg, sizeof(xen_argo_addr_t)) )
                 return -EFAULT;
             {
                 xen_argo_addr_t addr;
@@ -3741,7 +3801,7 @@ argo_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
         case ARGOIOCGETCONNECTERR:
         {
             unsigned long flags;
-            if ( !access_ok(VERIFY_WRITE, arg, sizeof(int)) )
+            if ( !_access_ok(VERIFY_WRITE, arg, sizeof(int)) )
                 return -EFAULT;
             DEBUG_APPLE;
 
@@ -3763,7 +3823,7 @@ argo_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
             break;
         case ARGOIOCACCEPT:
             DEBUG_APPLE;
-            if ( !access_ok(VERIFY_WRITE, arg, sizeof(xen_argo_addr_t)) )
+            if ( !_access_ok(VERIFY_WRITE, arg, sizeof(xen_argo_addr_t)) )
                 return -EFAULT;
             {
                 xen_argo_addr_t addr;
