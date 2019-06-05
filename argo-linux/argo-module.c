@@ -2065,7 +2065,7 @@ argo_try_sendv_sponsor(struct argo_private *p,
     DEBUG_APPLE;
 
 #ifdef ARGO_DEBUG
-    printk (KERN_ERR "sendv returned %d\n", ret);
+    printk (KERN_ERR "sendv returned %zu\n", ret);
 #endif
 
     argo_spin_lock_irqsave(&pending_xmit_lock, flags);
@@ -2426,8 +2426,8 @@ argo_recvfrom_dgram(struct argo_private *p, void *buf, size_t len,
 
     DEBUG_APPLE;
 #ifdef ARGO_DEBUG
-    printk("FISHSOUP argo_recvfrom_dgram %p %u %d %d \n", buf, len,
-           nonblock, peek);
+    printk("FISHSOUP argo_recvfrom_dgram %p %zu %sblock %s\n", buf, len,
+           nonblock ? "non-" : "", peek ? "peek" : "consume");
 #endif
 
     argo_read_lock(&list_lock);
@@ -2629,7 +2629,7 @@ argo_recv_stream(struct argo_private *p, void *_buf, int len, int recv_flags,
                 list_del (&pending->node);
 
 #ifdef ARGO_DEBUG
-                printk(KERN_ERR "OP p=%p k=%d s=%d c=%d\n", pending,
+                printk(KERN_ERR "OP p=%p k=%zu s=%d c=%d\n", pending,
                        pending->data_len, p->state,
                        atomic_read (&p->pending_recv_count));
 #endif
@@ -2800,7 +2800,7 @@ argo_send_stream(struct argo_private *p, const void *_buf, int len,
     DEBUG_APPLE;
     DEBUG_APPLE;
 #ifdef ARGO_DEBUG
-    printk(KERN_ERR "avacado count=%d\n", count);
+    printk(KERN_ERR "avacado count=%zu\n", count);
 #endif
     return count;
 }
@@ -3340,7 +3340,7 @@ argo_sendto(struct argo_private * p, const void *buf, size_t len, int flags,
         return -EFAULT;
 
 #ifdef ARGO_DEBUG
-    printk(KERN_ERR "argo_sendto buf:%p len:%d nonblock:%d\n", buf, len, nonblock);
+    printk(KERN_ERR "argo_sendto buf:%p len:%zu %sblock\n", buf, len, nonblock ? "non-" : "");
 #endif
 
     if ( flags & MSG_DONTWAIT )
@@ -3424,8 +3424,8 @@ argo_recvfrom(struct argo_private * p, void *buf, size_t len, int flags,
     ssize_t rc = 0;
 
 #ifdef ARGO_DEBUG
-    printk(KERN_ERR "argo_recvfrom buff:%p len:%d nonblock:%d\n",
-           buf, len, nonblock);
+    printk(KERN_ERR "argo_recvfrom buff:%p len:%zu %sblock\n",
+           buf, len, nonblock ? "non-" : "");
 #endif
  
     if ( !_access_ok (VERIFY_WRITE, buf, len) )
