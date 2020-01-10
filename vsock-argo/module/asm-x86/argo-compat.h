@@ -29,9 +29,9 @@ HYPERVISOR_argo_op(int cmd, void *arg1, void *arg2, uint32_t arg3,
 {
 	int ret;
 
-	stac();
+	__xen_stac();
 	ret = _hypercall5(int, argo_op, cmd, arg1, arg2, arg3, arg4);
-	clac();
+	__xen_clac();
 
 	return ret;
 }
