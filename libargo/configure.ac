@@ -85,6 +85,7 @@ AC_CHECK_LIB([dl], [dlopen])
 AC_OUTPUT([Makefile
            src/Makefile
 	   test/Makefile
+	   test/arcat/Makefile
 	   app/Makefile
            libargo.pc
            ])

@@ -60,4 +60,4 @@ libtool
 libargo.pc
 app/argo-proxy
 app/ttcp-argo
-test/test
+test/arcat/arcat
