@@ -20,13 +20,10 @@
 AM_CPPFLAGS = -I$(srcdir)/../src
 AM_CFLAGS = -g
 
-bin_PROGRAMS = ttcp-argo argo-proxy viptables
+bin_PROGRAMS = ttcp-argo argo-proxy
 
 ttcp_argo_SOURCES = ttcp.c
 ttcp_argo_LDADD = ../src/libargo.la
 
 argo_proxy_SOURCES = proxy.c
 argo_proxy_LDADD = ../src/libargo.la
-
-viptables_SOURCES = viptables.c
-viptables_LDADD = ../src/libargo.la
