@@ -301,18 +301,10 @@ out:
 	return ERR_PTR(-rc);
 }
 
-int argo_ring_send_skb(struct argo_ring_hnd *h, const struct sk_buff *skb,
-		xen_argo_send_addr_t *send)
+int argo_ring_send_skb(const struct sk_buff *skb, xen_argo_send_addr_t *send)
 {
 	xen_argo_iov_t iov;
 	int rc;
-
-	if (argo_ring_has_space(h) <
-		ARGO_RING_ALIGN(skb->len +
-			sizeof (struct xen_argo_ring_message_header))) {
-		pr_debug("%s: Insuficient space in target ring.\n", __func__);
-		return -ENOBUFS;
-	}
 
 	iov.iov_hnd = (uint64_t)skb->data;
 	iov.iov_len = skb->len;

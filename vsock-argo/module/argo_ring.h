@@ -64,8 +64,7 @@ int argo_ring_register(struct argo_ring_hnd *h);
 /*
  * Ring "send" primitive. send is synchronous, direct hypercall to Xen.
  */
-int argo_ring_send_skb(struct argo_ring_hnd *h, const struct sk_buff *skb,
-		xen_argo_send_addr_t *send);
+int argo_ring_send_skb(const struct sk_buff *skb, xen_argo_send_addr_t *send);
 
 int argo_core_init(void);
 void argo_core_cleanup(void);

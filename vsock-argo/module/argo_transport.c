@@ -207,7 +207,7 @@ static int argo_transport_dgram_enqueue(struct vsock_sock *vsk,
 		goto out;
 	}
 
-	rc = argo_ring_send_skb(argo_trans(vsk)->h, skb, &sendaddr);
+	rc = argo_ring_send_skb(skb, &sendaddr);
 	if (rc < 0) {
 		pr_debug("%s: argo_ring_send_skb failed.\n", __func__);
 		goto out;
