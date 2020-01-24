@@ -276,7 +276,7 @@ static struct sk_buff *argo_ring_recv_skb(struct argo_ring_hnd *h)
 	msg_len = mh->len - sizeof (*mh);
 
 	if (unlikely(msg_len > argo_ring_has_data(h))) {
-		pr_debug("Invalid packet, message size exceeds ring capacity.");
+		pr_debug("Invalid packet, message size exceeds ring capacity.\n");
 		rc = E2BIG;
 		goto out;
 	}
@@ -284,7 +284,7 @@ static struct sk_buff *argo_ring_recv_skb(struct argo_ring_hnd *h)
 	if (msg_len) {
 		/* Data in this packet. */
 		if (pskb_expand_head(skb, 0, msg_len, GFP_ATOMIC)) {
-			pr_debug("Failed to allocate skb to receive message.");
+			pr_debug("Failed to allocate skb to receive message.\n");
 			rc = ENOMEM;
 			goto out;
 		}
