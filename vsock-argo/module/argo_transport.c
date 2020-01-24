@@ -100,7 +100,7 @@ static inline int sockaddr_vm_normalize(struct sockaddr_vm *addr)
 		addr->svm_port = addr_auto.svm_port;
 
 	if (addr->svm_cid > XEN_ARGO_DOMID_ANY)
-		return EINVAL;
+		return -EINVAL;
 
 	return 0;
 }
@@ -109,7 +109,7 @@ static inline int sockaddrvm_to_argo(const struct sockaddr_vm *s, xen_argo_addr_
 	struct sockaddr_vm c = *s;
 
 	if (sockaddr_vm_normalize(&c))
-		return EINVAL;
+		return -EINVAL;
 
 	d->domain_id = s->svm_cid;
 	d->aport = s->svm_port;
@@ -152,9 +152,8 @@ static int argo_transport_dgram_bind(struct vsock_sock *vsk,
 	int rc;
 
 	if (sockaddr_vm_normalize(addr))
-		return EINVAL;
+		return -EINVAL;
 
-	/* Auto-bind local_addr. */
 	memcpy(&vsk->local_addr, addr, sizeof (*addr));
 
 	t->h = argo_ring_handle_alloc(addr->svm_cid, addr->svm_port,
@@ -164,7 +163,7 @@ static int argo_transport_dgram_bind(struct vsock_sock *vsk,
 		pr_debug("argo_ring_handle_alloc(dom%u:%u) %s (%d).\n",
 			addr->svm_cid, addr->svm_port,
 			rc ? "failed" : "succeed", -rc);
-		goto failed_alloc;
+		return rc;
 	}
 
 	rc = argo_ring_register(t->h);
@@ -194,7 +193,7 @@ static int argo_transport_dgram_enqueue(struct vsock_sock *vsk,
 	/* TODO: Auto-bind already done? */
 	if (sockaddrvm_to_argo(&vsk->local_addr, &sendaddr.src) ||
 		sockaddrvm_to_argo(remote_addr, &sendaddr.dst))
-		return EINVAL;
+		return -EINVAL;
 
 	skb = alloc_skb(len, GFP_ATOMIC);
 	if (!skb) {
